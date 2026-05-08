@@ -23,7 +23,7 @@ echo "   OUTBOUND_TRUNK_ID= ${OUTBOUND_TRUNK_ID:-<missing>}"
 
 # Fail fast if the bare-minimum credentials are not present.
 require=( LIVEKIT_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET GOOGLE_API_KEY \
-          SUPABASE_URL SUPABASE_SERVICE_KEY )
+          SUPABASE_URL SUPABASE_SERVICE_KEY OUTBOUND_TRUNK_ID )
 missing=()
 for v in "${require[@]}"; do
     if [ -z "${!v:-}" ]; then

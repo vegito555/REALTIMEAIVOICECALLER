@@ -128,6 +128,16 @@ def _build_session(
     )
 
 
+def _trunk_id_hint(trunk_id: str) -> str:
+    if trunk_id and not trunk_id.startswith("ST_"):
+        return (
+            " OUTBOUND_TRUNK_ID should be the LiveKit outbound SIP trunk ID "
+            "from LiveKit Cloud, usually starting with ST_; it should not be "
+            "the Vobiz SIP domain/account UUID."
+        )
+    return ""
+
+
 class OutboundAssistant(Agent):
     def __init__(self, instructions: str) -> None:
         super().__init__(instructions=instructions, tools=[])
@@ -234,7 +244,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     )
                 )
             except Exception as exc:
-                await _safe_log("error", f"SIP dial failed for {phone_number}: {exc}")
+                hint = _trunk_id_hint(trunk_id)
+                await _safe_log("error", f"SIP dial failed for {phone_number}: {exc}{hint}")
                 ctx.shutdown()
                 return
             await _safe_log("info", f"Call ANSWERED — {phone_number}, starting AI session")
