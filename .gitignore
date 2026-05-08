@@ -1,27 +1,21 @@
-# Environment variables
 .env
 .env.local
-
-# Python
-.venv/
-venv/
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
-
-# Node.js / Next.js
+*.db
+*.sqlite
+*.log
+venv/
+.venv/
 node_modules/
-.next/
+*.egg-info/
 dist/
 build/
+.next/
 .DS_Store
-
-# Logs
+.vscode/
+.idea/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# IDE settings
-.vscode/
-.idea/

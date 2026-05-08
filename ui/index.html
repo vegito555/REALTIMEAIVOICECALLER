@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OutboundAI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d; --card:#161616; --card2:#1d1d1d; --border:#252525;
+  --accent:#00ff88; --accent2:#00ccff; --danger:#ff4d4d; --warn:#ffaa00;
+  --muted:#5a5a5a; --text:#e0e0e0; --text2:#aaa;
+  --mono:'Courier New',monospace; --sans:'Segoe UI',system-ui,sans-serif; --r:8px;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;line-height:1.5;font-size:14px}
+a{color:var(--accent2);text-decoration:none}
+header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--card)}
+header h1{font-size:18px;font-weight:600;color:var(--accent)}
+header .sub{font-size:12px;color:var(--text2);margin-left:10px}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:10px 24px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+nav button{background:transparent;border:1px solid transparent;color:var(--text2);padding:8px 14px;border-radius:var(--r);cursor:pointer;font-size:13px;font-family:var(--sans)}
+nav button:hover{color:var(--text);background:var(--card2)}
+nav button.active{background:var(--accent);color:#000;font-weight:600}
+main{max-width:1300px;margin:0 auto;padding:24px}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.card h2{font-size:16px;font-weight:600;margin-bottom:12px;color:var(--accent)}
+.card h3{font-size:14px;font-weight:600;margin:14px 0 8px;color:var(--text)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:800px){.row,.row3,.row4{grid-template-columns:1fr}}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:600}
+input[type=text],input[type=tel],input[type=password],input[type=email],input[type=number],input[type=time],input[type=date],input[type=file],select,textarea{
+  width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:var(--r);font-family:var(--sans);font-size:13px;outline:none
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:90px;font-family:var(--mono)}
+.field{margin-bottom:12px}
+.btn{display:inline-block;padding:10px 16px;background:var(--accent);color:#000;font-weight:600;border:none;border-radius:var(--r);cursor:pointer;font-size:13px;font-family:var(--sans);transition:opacity 0.15s}
+.btn:hover{opacity:0.85}
+.btn.alt{background:var(--accent2)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.warn{background:var(--warn);color:#000}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn.sm{padding:5px 10px;font-size:11px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.kpi{padding:18px;border-radius:var(--r);background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--border)}
+.kpi .label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kpi .val{font-size:28px;font-weight:700;color:var(--accent)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:4px 10px;background:var(--card2);border:1px solid var(--border);border-radius:50px;font-size:11px;color:var(--text2);font-family:var(--mono)}
+.chip.ok{border-color:var(--accent);color:var(--accent)}
+.chip.bad{border-color:var(--danger);color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-weight:600;color:var(--text2);text-transform:uppercase;font-size:11px;letter-spacing:.5px;background:var(--card2)}
+tr:hover td{background:var(--card2)}
+.badge{display:inline-block;padding:2px 8px;font-size:11px;border-radius:50px;font-weight:600}
+.b-ok{background:rgba(0,255,136,.15);color:var(--accent)}
+.b-warn{background:rgba(255,170,0,.15);color:var(--warn)}
+.b-bad{background:rgba(255,77,77,.15);color:var(--danger)}
+.b-mut{background:var(--card2);color:var(--text2)}
+.toast{position:fixed;bottom:20px;right:20px;padding:14px 20px;background:var(--card);border:1px solid var(--accent);border-radius:var(--r);z-index:99;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:360px}
+.toast.err{border-color:var(--danger)}
+.err{color:var(--danger);font-size:12px;margin-top:4px;min-height:14px}
+.muted{color:var(--text2);font-size:12px}
+.split{display:grid;grid-template-columns:280px 1fr;gap:14px}
+@media(max-width:800px){.split{grid-template-columns:1fr}}
+.scroll{max-height:480px;overflow-y:auto}
+.chart-wrap{position:relative;height:260px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.eye{position:relative}
+.eye .toggle-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:14px}
+.checkbox-row{display:flex;gap:14px;flex-wrap:wrap}
+.checkbox-row label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);font-weight:400}
+.code{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+.progress{height:18px;background:var(--card2);border-radius:50px;overflow:hidden;margin-top:8px;border:1px solid var(--border)}
+.progress .bar{height:100%;background:var(--accent);width:0%;transition:width .2s;text-align:center;color:#000;font-size:11px;font-weight:600;line-height:18px}
+hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div><h1>📞 OutboundAI</h1><span class="sub">AI Voice Calling SaaS · Gemini Live · LiveKit · Vobiz</span></div>
+  <div><span class="chip" id="hdr-status">⏳ loading…</span></div>
+</header>
+
+<nav id="nav">
+  <button data-tab="stats" class="active">📊 Stats</button>
+  <button data-tab="single">📞 Single Call</button>
+  <button data-tab="batch">📋 Batch</button>
+  <button data-tab="campaigns">🚀 Campaigns</button>
+  <button data-tab="agents">🤖 Agents</button>
+  <button data-tab="prompt">✏️ AI Prompt</button>
+  <button data-tab="appointments">📅 Appointments</button>
+  <button data-tab="calls">📝 Call Logs</button>
+  <button data-tab="crm">👥 CRM</button>
+  <button data-tab="settings">⚙️ Settings</button>
+  <button data-tab="logs">📋 Logs</button>
+  <button data-tab="setup">🔧 Setup</button>
+</nav>
+
+<main>
+
+<!-- ==== STATS ==== -->
+<section id="p-stats" class="panel active">
+  <div class="row4">
+    <div class="kpi"><div class="label">Total Calls</div><div class="val" id="kpi-total">0</div></div>
+    <div class="kpi"><div class="label">Booked</div><div class="val" id="kpi-booked">0</div></div>
+    <div class="kpi"><div class="label">Booking Rate</div><div class="val" id="kpi-rate">0%</div></div>
+    <div class="kpi"><div class="label">Avg Duration</div><div class="val" id="kpi-dur">0s</div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Live Configuration</h2>
+    <div class="chips" id="live-config"><span class="chip">loading…</span></div>
+  </div>
+  <div class="row">
+    <div class="card"><h2>Outcomes</h2><div class="chart-wrap"><canvas id="ch-outcomes"></canvas></div></div>
+    <div class="card"><h2>14-Day Timeline</h2><div class="chart-wrap"><canvas id="ch-timeline"></canvas></div></div>
+  </div>
+  <div class="card"><h2>Avg Duration by Outcome (s)</h2><div class="chart-wrap"><canvas id="ch-duration"></canvas></div></div>
+</section>
+
+<!-- ==== SINGLE CALL ==== -->
+<section id="p-single" class="panel">
+  <div class="card">
+    <h2>📞 Place a Single Call</h2>
+    <form id="call-form">
+      <div class="row">
+        <div class="field"><label>Phone (E.164) *</label><input type="tel" id="f-phone" placeholder="+919876543210" required /></div>
+        <div class="field"><label>Lead Name</label><input type="text" id="f-name" value="there" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Business Name</label><input type="text" id="f-biz" value="our company" /></div>
+        <div class="field"><label>Service Type</label><input type="text" id="f-srv" value="our service" /></div>
+      </div>
+      <div class="field"><label>Agent Profile</label><select id="f-agent-profile"><option value="">— Use default / global prompt —</option></select></div>
+      <div class="field"><label><input type="checkbox" id="f-use-prompt" /> Use a custom system prompt for this call</label></div>
+      <div class="field" id="f-prompt-wrap" style="display:none"><label>Custom System Prompt</label><textarea id="f-prompt" rows="6" placeholder="Override the global prompt for this call only…"></textarea></div>
+      <button type="submit" class="btn">🚀 Dispatch Call</button>
+      <div class="err" id="f-err"></div>
+    </form>
+  </div>
+</section>
+
+<!-- ==== BATCH ==== -->
+<section id="p-batch" class="panel">
+  <div class="card">
+    <h2>📋 Batch / CSV Calls</h2>
+    <p class="muted">CSV columns: <span class="code">phone,lead_name,business_name,service_type</span> (only <span class="code">phone</span> is required, must include + and country code).</p>
+    <div class="row">
+      <div class="field"><label>Agent Profile</label><select id="bc-agent-profile"><option value="">— Use default —</option></select></div>
+      <div class="field"><label>Delay between calls (seconds)</label><input type="number" id="bc-delay" value="3" min="1" /></div>
+    </div>
+    <div class="field"><label>CSV file</label><input type="file" id="bc-file" accept=".csv,text/csv" /></div>
+    <button class="btn ghost" id="bc-parse">📂 Parse CSV</button>
+    <div id="bc-preview" style="margin-top:12px"></div>
+    <div class="progress" id="bc-progress" style="display:none"><div class="bar" id="bc-bar">0%</div></div>
+    <button class="btn" id="bc-start" style="margin-top:12px;display:none">🚀 Start Batch</button>
+  </div>
+</section>
+
+<!-- ==== CAMPAIGNS ==== -->
+<section id="p-campaigns" class="panel">
+  <div class="card">
+    <h2>🚀 Create Campaign</h2>
+    <div class="row">
+      <div class="field"><label>Campaign Name *</label><input type="text" id="camp-name" placeholder="Q1 outbound push" /></div>
+      <div class="field"><label>Schedule</label>
+        <select id="camp-schedule"><option value="once">Run once now</option><option value="daily">Daily</option><option value="weekdays">Weekdays only</option></select>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Time of day</label><input type="time" id="camp-time" value="09:00" /></div>
+      <div class="field"><label>Delay between calls (s)</label><input type="number" id="camp-delay" value="3" min="1" /></div>
+      <div class="field"><label>Agent Profile</label><select id="camp-agent-profile"><option value="">— Default —</option></select></div>
+    </div>
+    <div class="field"><label><input type="checkbox" id="camp-use-prompt" /> Override prompt for this campaign</label></div>
+    <div class="field" id="camp-prompt-wrap" style="display:none"><label>Custom System Prompt</label><textarea id="camp-prompt" rows="5"></textarea></div>
+    <div class="field"><label>Contacts CSV</label><input type="file" id="camp-file" accept=".csv,text/csv" /></div>
+    <button class="btn ghost" id="camp-parse">📂 Parse CSV</button>
+    <div id="camp-preview" style="margin-top:10px"></div>
+    <button class="btn" id="camp-create" style="margin-top:12px;display:none">✅ Create Campaign</button>
+  </div>
+  <div class="card">
+    <h2>Existing Campaigns</h2>
+    <div id="camp-list"><span class="muted">Loading…</span></div>
+  </div>
+</section>
+
+<!-- ==== AGENTS ==== -->
+<section id="p-agents" class="panel">
+  <div class="card">
+    <h2>🤖 Agent Profile Editor</h2>
+    <input type="hidden" id="ap-id" />
+    <div class="row">
+      <div class="field"><label>Profile Name *</label><input type="text" id="ap-name" placeholder="TBD Sales Agent — Female warm" /></div>
+      <div class="field"><label>Voice</label>
+        <select id="ap-voice">
+          <optgroup label="Female voices">
+            <option value="Aoede">Aoede — warm, expressive ⭐</option>
+            <option value="Achernar">Achernar — soft & clear</option>
+            <option value="Autonoe">Autonoe — natural female</option>
+            <option value="Callirrhoe">Callirrhoe — gentle female</option>
+            <option value="Despina">Despina — bright female</option>
+            <option value="Erinome">Erinome — smooth female</option>
+            <option value="Gacrux">Gacrux — rich female</option>
+            <option value="Kore">Kore — soft, calm</option>
+            <option value="Laomedeia">Laomedeia — light female</option>
+            <option value="Leda">Leda — clear female</option>
+            <option value="Pulcherrima">Pulcherrima — warm female</option>
+            <option value="Sulafat">Sulafat — smooth female</option>
+            <option value="Vindemiatrix">Vindemiatrix — professional female</option>
+            <option value="Zephyr">Zephyr — airy female</option>
+          </optgroup>
+          <optgroup label="Male voices">
+            <option value="Achird">Achird — clear male</option>
+            <option value="Algenib">Algenib — strong male</option>
+            <option value="Algieba">Algieba — rich male</option>
+            <option value="Alnilam">Alnilam — deep male</option>
+            <option value="Charon">Charon — calm, deep</option>
+            <option value="Enceladus">Enceladus — expressive male</option>
+            <option value="Fenrir">Fenrir — confident male</option>
+            <option value="Iapetus">Iapetus — steady male</option>
+            <option value="Orus">Orus — warm male</option>
+            <option value="Perseus">Perseus — clear male</option>
+            <option value="Puck">Puck — bright, energetic</option>
+            <option value="Rasalgethi">Rasalgethi — bold male</option>
+            <option value="Sadachbia">Sadachbia — natural male</option>
+            <option value="Sadaltager">Sadaltager — smooth male</option>
+            <option value="Schedar">Schedar — professional male</option>
+            <option value="Umbriel">Umbriel — deep, calm</option>
+            <option value="Zubenelgenubi">Zubenelgenubi — resonant male</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Model</label>
+        <select id="ap-model">
+          <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview ⭐</option>
+          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+        </select>
+      </div>
+      <div class="field"><label>Enabled Tools (JSON array, [] = all)</label><input type="text" id="ap-tools" value="[]" placeholder='["lookup_contact","end_call"]' /></div>
+    </div>
+    <div class="field"><label>System Prompt (optional override)</label><textarea id="ap-prompt" rows="6" placeholder="Leave empty to use the global prompt…"></textarea></div>
+    <div class="field"><label><input type="checkbox" id="ap-default" /> Make this the default profile</label></div>
+    <button class="btn" onclick="saveAgentProfile()">💾 Save Profile</button>
+    <button class="btn ghost" onclick="resetAgentForm()">↺ Clear</button>
+  </div>
+  <div class="card">
+    <h2>Profiles</h2>
+    <div id="ap-list"><span class="muted">Loading…</span></div>
+  </div>
+</section>
+
+<!-- ==== PROMPT ==== -->
+<section id="p-prompt" class="panel">
+  <div class="card">
+    <h2>✏️ Global System Prompt</h2>
+    <p class="muted">Used when no per-call or per-campaign prompt is set. Use placeholders <span class="code">{lead_name}</span>, <span class="code">{phone}</span>, <span class="code">{business_name}</span>, etc.</p>
+    <textarea id="prompt-text" rows="22"></textarea>
+    <div class="muted" style="text-align:right;margin:6px 0"><span id="prompt-count">0</span> chars</div>
+    <button class="btn" onclick="savePrompt()">💾 Save</button>
+    <button class="btn ghost" onclick="resetPrompt()">↺ Reset to default</button>
+  </div>
+</section>
+
+<!-- ==== APPOINTMENTS ==== -->
+<section id="p-appointments" class="panel">
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0">📅 Appointments</h2>
+      <input type="date" id="apt-date" />
+      <button class="btn ghost sm" onclick="loadAppointments()">↻ Refresh</button>
+      <button class="btn ghost sm" onclick="$('apt-date').value='';loadAppointments()">Clear filter</button>
+    </div>
+    <div id="apt-table" class="scroll"><span class="muted">Loading…</span></div>
+  </div>
+</section>
+
+<!-- ==== CALL LOGS ==== -->
+<section id="p-calls" class="panel">
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0">📝 Call Logs</h2>
+      <button class="btn ghost sm" onclick="loadCalls(1)">↻ Refresh</button>
+      <span class="muted">Page <span id="calls-page">1</span></span>
+      <button class="btn ghost sm" onclick="loadCalls(callsPage-1)">← Prev</button>
+      <button class="btn ghost sm" onclick="loadCalls(callsPage+1)">Next →</button>
+    </div>
+    <div id="calls-table" class="scroll"><span class="muted">Loading…</span></div>
+  </div>
+</section>
+
+<!-- ==== CRM ==== -->
+<section id="p-crm" class="panel">
+  <div class="split">
+    <div class="card">
+      <h2>👥 Contacts</h2>
+      <div id="crm-list" class="scroll"><span class="muted">Loading…</span></div>
+    </div>
+    <div class="card">
+      <h2>Contact Detail</h2>
+      <div id="crm-detail"><span class="muted">Click a contact to see history.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==== SETTINGS ==== -->
+<section id="p-settings" class="panel">
+
+  <div class="card" style="border-color:var(--accent2);background:linear-gradient(135deg,var(--card),rgba(0,204,255,.05))">
+    <h2 style="color:var(--accent2)">🔒 Single Source of Truth: VPS Environment</h2>
+    <p>Credentials and infra config are loaded <strong>only from real environment variables</strong> set on your VPS / Coolify dashboard. They are <strong>never written to or read from</strong> the Supabase <span class="code">settings</span> table.</p>
+    <p class="muted" style="margin-top:6px">The fields below are <strong>read-only diagnostics</strong>. Each shows whether the corresponding env var is configured. To change a value, update it in your hosting provider and redeploy. Only <span class="code">system_prompt</span> and <span class="code">ENABLED_TOOLS</span> are editable from this dashboard.</p>
+  </div>
+
+  <div class="card">
+    <h2>🎯 LiveKit Cloud</h2>
+    <p class="muted">Get from <a href="https://cloud.livekit.io" target="_blank">cloud.livekit.io</a> → Project → Keys</p>
+    <div class="field"><label>LIVEKIT_URL</label><input type="text" id="s-LIVEKIT_URL" placeholder="wss://your-project.livekit.cloud" /></div>
+    <div class="row">
+      <div class="field eye"><label>LIVEKIT_API_KEY</label><input type="password" id="s-LIVEKIT_API_KEY" /><button type="button" class="toggle-eye" onclick="togglePw('s-LIVEKIT_API_KEY')">👁</button></div>
+      <div class="field eye"><label>LIVEKIT_API_SECRET</label><input type="password" id="s-LIVEKIT_API_SECRET" /><button type="button" class="toggle-eye" onclick="togglePw('s-LIVEKIT_API_SECRET')">👁</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🤖 Google Gemini</h2>
+    <p class="muted">Get from <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></p>
+    <div class="row">
+      <div class="field eye"><label>GOOGLE_API_KEY</label><input type="password" id="s-GOOGLE_API_KEY" /><button type="button" class="toggle-eye" onclick="togglePw('s-GOOGLE_API_KEY')">👁</button></div>
+      <div class="field"><label>GEMINI_MODEL</label>
+        <select id="s-GEMINI_MODEL">
+          <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview ⭐</option>
+          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>GEMINI_TTS_VOICE</label><input type="text" id="s-GEMINI_TTS_VOICE" value="Aoede" /></div>
+      <div class="field"><label>USE_GEMINI_REALTIME</label>
+        <select id="s-USE_GEMINI_REALTIME"><option value="true">true (recommended)</option><option value="false">false (pipeline fallback)</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📞 Vobiz SIP</h2>
+    <div class="row">
+      <div class="field"><label>VOBIZ_SIP_DOMAIN</label><input type="text" id="s-VOBIZ_SIP_DOMAIN" /></div>
+      <div class="field"><label>VOBIZ_USERNAME</label><input type="text" id="s-VOBIZ_USERNAME" /></div>
+    </div>
+    <div class="row">
+      <div class="field eye"><label>VOBIZ_PASSWORD</label><input type="password" id="s-VOBIZ_PASSWORD" /><button type="button" class="toggle-eye" onclick="togglePw('s-VOBIZ_PASSWORD')">👁</button></div>
+      <div class="field"><label>VOBIZ_OUTBOUND_NUMBER</label><input type="text" id="s-VOBIZ_OUTBOUND_NUMBER" placeholder="+91…" /></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>OUTBOUND_TRUNK_ID (auto-filled after Create Trunk)</label><input type="text" id="s-OUTBOUND_TRUNK_ID" /></div>
+      <div class="field"><label>DEFAULT_TRANSFER_NUMBER</label><input type="text" id="s-DEFAULT_TRANSFER_NUMBER" placeholder="+91…" /></div>
+    </div>
+    <button class="btn alt" onclick="createSIPTrunk()">⚡ Create SIP Trunk in LiveKit</button>
+  </div>
+
+  <div class="card">
+    <h2>📲 Twilio SMS (optional)</h2>
+    <div class="row">
+      <div class="field"><label>TWILIO_ACCOUNT_SID</label><input type="text" id="s-TWILIO_ACCOUNT_SID" /></div>
+      <div class="field eye"><label>TWILIO_AUTH_TOKEN</label><input type="password" id="s-TWILIO_AUTH_TOKEN" /><button type="button" class="toggle-eye" onclick="togglePw('s-TWILIO_AUTH_TOKEN')">👁</button></div>
+    </div>
+    <div class="field"><label>TWILIO_FROM_NUMBER</label><input type="text" id="s-TWILIO_FROM_NUMBER" /></div>
+  </div>
+
+  <div class="card">
+    <h2>🎙 Recording (S3 / Supabase Storage)</h2>
+    <div class="row">
+      <div class="field"><label>S3_ACCESS_KEY_ID</label><input type="text" id="s-S3_ACCESS_KEY_ID" /></div>
+      <div class="field eye"><label>S3_SECRET_ACCESS_KEY</label><input type="password" id="s-S3_SECRET_ACCESS_KEY" /><button type="button" class="toggle-eye" onclick="togglePw('s-S3_SECRET_ACCESS_KEY')">👁</button></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>S3_ENDPOINT_URL</label><input type="text" id="s-S3_ENDPOINT_URL" /></div>
+      <div class="field"><label>S3_REGION</label><input type="text" id="s-S3_REGION" value="ap-northeast-1" /></div>
+    </div>
+    <div class="field"><label>S3_BUCKET</label><input type="text" id="s-S3_BUCKET" value="call-recordings" /></div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Cal.com (optional)</h2>
+    <div class="row">
+      <div class="field eye"><label>CALCOM_API_KEY</label><input type="password" id="s-CALCOM_API_KEY" /><button type="button" class="toggle-eye" onclick="togglePw('s-CALCOM_API_KEY')">👁</button></div>
+      <div class="field"><label>CALCOM_EVENT_TYPE_ID</label><input type="text" id="s-CALCOM_EVENT_TYPE_ID" /></div>
+    </div>
+    <div class="field"><label>CALCOM_TIMEZONE</label><input type="text" id="s-CALCOM_TIMEZONE" value="Asia/Kolkata" /></div>
+  </div>
+
+  <div class="card">
+    <h2>🛠 Tool Toggles</h2>
+    <p class="muted">Empty = all 9 tools enabled. Check items to restrict the agent to a subset.</p>
+    <div class="checkbox-row" id="tools-toggles">
+      <label><input type="checkbox" value="check_availability" /> check_availability</label>
+      <label><input type="checkbox" value="book_appointment" /> book_appointment</label>
+      <label><input type="checkbox" value="end_call" /> end_call</label>
+      <label><input type="checkbox" value="transfer_to_human" /> transfer_to_human</label>
+      <label><input type="checkbox" value="send_sms_confirmation" /> send_sms_confirmation</label>
+      <label><input type="checkbox" value="lookup_contact" /> lookup_contact</label>
+      <label><input type="checkbox" value="remember_details" /> remember_details</label>
+      <label><input type="checkbox" value="book_calcom" /> book_calcom</label>
+      <label><input type="checkbox" value="cancel_calcom" /> cancel_calcom</label>
+    </div>
+    <button class="btn" onclick="saveToolToggles()" style="margin-top:10px">💾 Save Tools</button>
+  </div>
+</section>
+
+<!-- ==== LOGS ==== -->
+<section id="p-logs" class="panel">
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0">📋 Live Logs</h2>
+      <select id="log-level"><option value="">All levels</option><option value="info">info</option><option value="warning">warning</option><option value="error">error</option></select>
+      <select id="log-source"><option value="">All sources</option><option value="agent">agent</option><option value="server">server</option></select>
+      <button class="btn ghost sm" onclick="loadLogs()">↻ Refresh</button>
+      <button class="btn ghost sm" id="log-pause">⏸ Pause</button>
+      <button class="btn danger sm" onclick="clearLogs()">🗑 Clear</button>
+    </div>
+    <div id="logs-table" class="scroll"><span class="muted">Loading…</span></div>
+  </div>
+</section>
+
+<!-- ==== SETUP ==== -->
+<section id="p-setup" class="panel">
+  <div class="card">
+    <h2>🔧 Quick-Start Guide</h2>
+    <ol style="padding-left:20px;line-height:1.9">
+      <li>Run <span class="code">supabase_schema.sql</span> in Supabase SQL Editor.</li>
+      <li>Open <strong>⚙️ Settings</strong> → fill LiveKit, Gemini, and Vobiz credentials → Save.</li>
+      <li>Click <strong>⚡ Create SIP Trunk</strong> on the Vobiz card.</li>
+      <li>Open <strong>✏️ AI Prompt</strong> → tweak for your business → Save.</li>
+      <li>(Optional) Open <strong>🤖 Agents</strong> → create at least one named agent profile.</li>
+      <li>Open <strong>📞 Single Call</strong> → call your own number to test.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>💸 Cost (per minute)</h2>
+    <table>
+      <tr><th>Service</th><th>Cost</th></tr>
+      <tr><td>Vobiz SIP</td><td>₹1.00</td></tr>
+      <tr><td>LiveKit Cloud</td><td>₹0.17</td></tr>
+      <tr><td>Gemini Live</td><td>₹0.03</td></tr>
+      <tr><td><strong>Total realtime</strong></td><td><strong>≈ ₹1.20/min</strong></td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ============= CORE =============
+const $ = id => document.getElementById(id);
+const api  = (p, opts) => fetch(p, opts).then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.detail || r.statusText); return j; });
+const apiPost = (p, body) => api(p, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
+const apiPut  = (p, body) => api(p, {method:'PUT',  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
+const apiPatch= (p, body) => api(p, {method:'PATCH',headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
+const apiDel  = (p)       => api(p, {method:'DELETE'});
+
+function toast(msg, type='ok') {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'err' ? ' err' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+function showErr(id, msg) { const e = $(id); if (e) e.textContent = msg || ''; }
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTs(ts) { if (!ts) return ''; return ts.replace('T',' ').slice(0,19); }
+function togglePw(id) { const e = $(id); if (e) e.type = e.type === 'password' ? 'text' : 'password'; }
+
+// ============= NAV =============
+document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+function switchTab(name) {
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'p-' + name));
+  if (name === 'stats') { loadStats(); loadLiveConfig(); }
+  if (name === 'campaigns') loadCampaigns();
+  if (name === 'agents') loadAgentProfiles();
+  if (name === 'prompt') loadPrompt();
+  if (name === 'appointments') loadAppointments();
+  if (name === 'calls') loadCalls(1);
+  if (name === 'crm') loadCRM();
+  if (name === 'settings') loadSettings();
+  if (name === 'logs') loadLogs();
+}
+
+// ============= STATS / CHARTS =============
+const _charts = {};
+function _mkChart(id, type, data, options) {
+  const c = $(id); if (!c) return;
+  if (_charts[id]) { _charts[id].destroy(); }
+  _charts[id] = new Chart(c, { type, data, options: Object.assign({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{labels:{color:'#aaa'}} },
+    scales: type === 'doughnut' ? {} : { x:{ticks:{color:'#aaa'}, grid:{color:'#252525'}}, y:{ticks:{color:'#aaa'}, grid:{color:'#252525'}} }
+  }, options || {}) });
+}
+async function loadStats() {
+  try {
+    const s = await api('/api/stats');
+    $('kpi-total').textContent  = s.total_calls;
+    $('kpi-booked').textContent = s.booked;
+    $('kpi-rate').textContent   = s.booking_rate_percent + '%';
+    $('kpi-dur').textContent    = (s.avg_duration_seconds||0).toFixed(0) + 's';
+    _renderCharts(s);
+    $('hdr-status').textContent = '✅ connected'; $('hdr-status').className = 'chip ok';
+  } catch (e) {
+    $('hdr-status').textContent = '✗ ' + (e.message || 'error'); $('hdr-status').className = 'chip bad';
+  }
+}
+function _renderCharts(d) {
+  const labels = Object.keys(d.outcomes || {});
+  const vals = labels.map(l => d.outcomes[l]);
+  _mkChart('ch-outcomes','doughnut', { labels, datasets:[{ data:vals, backgroundColor:['#00ff88','#00ccff','#ffaa00','#ff4d4d','#aaa','#7c5cff','#ff66cc']}] });
+  const tl = d.timeline || [];
+  _mkChart('ch-timeline','line', { labels:tl.map(t=>t.date.slice(5)), datasets:[{ label:'Calls', data:tl.map(t=>t.count), borderColor:'#00ff88', backgroundColor:'rgba(0,255,136,.15)', tension:.3, fill:true }] });
+  const dbo = d.duration_by_outcome || {};
+  const ks = Object.keys(dbo);
+  _mkChart('ch-duration','bar', { labels:ks, datasets:[{ label:'Avg seconds', data:ks.map(k=>dbo[k].toFixed(1)), backgroundColor:'#00ccff' }] });
+}
+async function loadLiveConfig() {
+  try {
+    const s = await api('/api/settings');
+    const wrap = $('live-config'); wrap.innerHTML = '';
+    const keys = ['LIVEKIT_URL','GEMINI_MODEL','GEMINI_TTS_VOICE','VOBIZ_SIP_DOMAIN','OUTBOUND_TRUNK_ID','USE_GEMINI_REALTIME'];
+    for (const k of keys) {
+      const item = s[k] || {};
+      const c = document.createElement('span');
+      c.className = 'chip ' + (item.configured ? 'ok' : 'bad');
+      c.textContent = `${k}: ${item.configured ? (item.value || '✓ set') : '✗ missing'}`;
+      wrap.appendChild(c);
+    }
+  } catch (e) { /* silent */ }
+}
+
+// ============= SINGLE CALL =============
+$('f-use-prompt').addEventListener('change', e => $('f-prompt-wrap').style.display = e.target.checked ? '' : 'none');
+$('call-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  showErr('f-err','');
+  const phone = $('f-phone').value.trim();
+  if (!phone.startsWith('+')) { showErr('f-err','Phone must start with + and country code.'); return; }
+  const body = {
+    phone,
+    lead_name: $('f-name').value || 'there',
+    business_name: $('f-biz').value || 'our company',
+    service_type: $('f-srv').value || 'our service',
+    agent_profile_id: $('f-agent-profile').value || null,
+    system_prompt: $('f-use-prompt').checked ? ($('f-prompt').value || null) : null,
+  };
+  try { const r = await apiPost('/api/call', body); toast('📞 Dispatched: ' + r.room); }
+  catch (e) { showErr('f-err', e.message); toast(e.message, 'err'); }
+});
+
+// ============= CSV PARSE =============
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length === 0) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(',').map(c => c.trim());
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = cells[idx] || ''; });
+    if (row.phone) rows.push(row);
+  }
+  return rows;
+}
+function previewTable(rows) {
+  if (!rows.length) return '<span class="muted">No valid rows.</span>';
+  const cols = Object.keys(rows[0]);
+  let h = `<div class="muted" style="margin-bottom:8px">${rows.length} rows</div><div class="scroll"><table><tr>${cols.map(c=>'<th>'+escHtml(c)+'</th>').join('')}</tr>`;
+  rows.slice(0,30).forEach(r => h += '<tr>' + cols.map(c=>'<td>'+escHtml(r[c])+'</td>').join('') + '</tr>');
+  h += '</table></div>';
+  return h;
+}
+
+// ============= BATCH =============
+let _bcRows = [];
+$('bc-parse').addEventListener('click', async () => {
+  const f = $('bc-file').files[0]; if (!f) { toast('Pick a CSV first','err'); return; }
+  const text = await f.text();
+  _bcRows = parseCSV(text).filter(r => (r.phone||'').startsWith('+'));
+  $('bc-preview').innerHTML = previewTable(_bcRows);
+  $('bc-start').style.display = _bcRows.length ? '' : 'none';
+});
+$('bc-start').addEventListener('click', async () => {
+  if (!_bcRows.length) return;
+  $('bc-progress').style.display = ''; $('bc-start').disabled = true;
+  const delay = Math.max(1, parseInt($('bc-delay').value) || 3);
+  const profileId = $('bc-agent-profile').value || null;
+  let done = 0;
+  for (const r of _bcRows) {
+    try {
+      await apiPost('/api/call', {
+        phone: r.phone, lead_name: r.lead_name || 'there',
+        business_name: r.business_name || 'our company',
+        service_type: r.service_type || 'our service',
+        agent_profile_id: profileId,
+      });
+    } catch (e) { /* keep going */ }
+    done++;
+    const pct = Math.round(done * 100 / _bcRows.length);
+    $('bc-bar').style.width = pct + '%'; $('bc-bar').textContent = pct + '%';
+    await new Promise(res => setTimeout(res, delay * 1000));
+  }
+  $('bc-start').disabled = false; toast(`Batch complete: ${done}/${_bcRows.length}`);
+});
+
+// ============= CAMPAIGNS =============
+$('camp-use-prompt').addEventListener('change', e => $('camp-prompt-wrap').style.display = e.target.checked ? '' : 'none');
+let _campRows = [];
+$('camp-parse').addEventListener('click', async () => {
+  const f = $('camp-file').files[0]; if (!f) { toast('Pick a CSV first','err'); return; }
+  const text = await f.text();
+  _campRows = parseCSV(text).filter(r => (r.phone||'').startsWith('+'));
+  $('camp-preview').innerHTML = previewTable(_campRows);
+  $('camp-create').style.display = _campRows.length ? '' : 'none';
+});
+$('camp-create').addEventListener('click', async () => {
+  const name = $('camp-name').value.trim();
+  if (!name) { toast('Campaign name required','err'); return; }
+  if (!_campRows.length) { toast('Parse a CSV first','err'); return; }
+  const body = {
+    name, contacts: _campRows,
+    schedule_type: $('camp-schedule').value, schedule_time: $('camp-time').value,
+    call_delay_seconds: Math.max(1, parseInt($('camp-delay').value)||3),
+    agent_profile_id: $('camp-agent-profile').value || null,
+    system_prompt: $('camp-use-prompt').checked ? ($('camp-prompt').value || null) : null,
+  };
+  try { await apiPost('/api/campaigns', body); toast('🚀 Campaign created'); loadCampaigns(); }
+  catch (e) { toast(e.message,'err'); }
+});
+async function loadCampaigns() {
+  try {
+    const list = await api('/api/campaigns');
+    if (!Array.isArray(list) || !list.length) { $('camp-list').innerHTML = '<span class="muted">No campaigns yet.</span>'; return; }
+    let h = '<table><tr><th>Name</th><th>Schedule</th><th>Status</th><th>Disp / Fail</th><th>Last Run</th><th>Actions</th></tr>';
+    list.forEach(c => {
+      const contacts = JSON.parse(c.contacts_json || '[]').length;
+      h += `<tr>
+        <td><strong>${escHtml(c.name)}</strong><div class="muted">${contacts} contacts</div></td>
+        <td>${escHtml(c.schedule_type)} @ ${escHtml(c.schedule_time||'')}</td>
+        <td><span class="badge ${c.status==='active'?'b-ok':c.status==='paused'?'b-warn':'b-mut'}">${escHtml(c.status)}</span></td>
+        <td>${c.total_dispatched||0} / ${c.total_failed||0}</td>
+        <td class="muted">${fmtTs(c.last_run_at)}</td>
+        <td>
+          <button class="btn sm" onclick="runCampaign('${c.id}','${escHtml(c.name)}')">▶ Run</button>
+          <button class="btn ghost sm" onclick="toggleCampaignStatus('${c.id}','${c.status==='paused'?'active':'paused'}')">${c.status==='paused'?'▶ Resume':'⏸ Pause'}</button>
+          <button class="btn danger sm" onclick="deleteCampaign('${c.id}','${escHtml(c.name)}')">🗑</button>
+        </td></tr>`;
+    });
+    h += '</table>'; $('camp-list').innerHTML = h;
+  } catch (e) { $('camp-list').innerHTML = '<span class="muted">Failed to load: ' + escHtml(e.message) + '</span>'; }
+}
+window.runCampaign = async (id) => { try { await apiPost('/api/campaigns/'+id+'/run'); toast('▶ Dispatching…'); loadCampaigns(); } catch (e) { toast(e.message,'err'); } };
+window.toggleCampaignStatus = async (id, status) => { try { await apiPatch('/api/campaigns/'+id+'/status', {status}); loadCampaigns(); } catch (e) { toast(e.message,'err'); } };
+window.deleteCampaign = async (id, name) => { if (!confirm('Delete campaign "' + name + '"?')) return; try { await apiDel('/api/campaigns/'+id); loadCampaigns(); } catch (e) { toast(e.message,'err'); } };
+
+// ============= AGENTS =============
+async function loadAgentProfiles() {
+  try {
+    const raw = await api('/api/agent-profiles');
+    const profiles = Array.isArray(raw) ? raw : [];
+    // Populate all 3 dropdowns
+    ['f-agent-profile','bc-agent-profile','camp-agent-profile'].forEach(id => {
+      const sel = $(id); if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Default —</option>' + profiles.map(p =>
+        `<option value="${p.id}">${escHtml(p.name)}${p.is_default?' ★':''} (${escHtml(p.voice)})</option>`
+      ).join('');
+      sel.value = cur || (profiles.find(p => p.is_default)?.id || '');
+    });
+    // Render table
+    if (!profiles.length) { $('ap-list').innerHTML = '<span class="muted">No profiles yet.</span>'; return; }
+    let h = '<table><tr><th>Name</th><th>Voice</th><th>Model</th><th>Tools</th><th>Default</th><th>Actions</th></tr>';
+    profiles.forEach(p => {
+      h += `<tr>
+        <td><strong>${escHtml(p.name)}</strong></td>
+        <td>${escHtml(p.voice)}</td>
+        <td><span class="code">${escHtml(p.model)}</span></td>
+        <td><span class="muted">${escHtml(p.enabled_tools||'[]')}</span></td>
+        <td>${p.is_default ? '<span class="badge b-ok">★ default</span>' : ''}</td>
+        <td>
+          <button class="btn ghost sm" onclick="editAgentProfile('${p.id}')">✎ Edit</button>
+          <button class="btn alt sm" onclick="setDefaultAgentProfile('${p.id}','${escHtml(p.name)}')">★</button>
+          <button class="btn danger sm" onclick="deleteAgentProfile('${p.id}','${escHtml(p.name)}')">🗑</button>
+        </td></tr>`;
+    });
+    $('ap-list').innerHTML = h + '</table>';
+  } catch (e) { $('ap-list').innerHTML = '<span class="muted">Failed: ' + escHtml(e.message) + '</span>'; }
+}
+window.saveAgentProfile = async () => {
+  const id = $('ap-id').value;
+  const body = {
+    name: $('ap-name').value.trim(),
+    voice: $('ap-voice').value,
+    model: $('ap-model').value,
+    system_prompt: $('ap-prompt').value || null,
+    enabled_tools: $('ap-tools').value || '[]',
+    is_default: $('ap-default').checked,
+  };
+  if (!body.name) { toast('Name is required','err'); return; }
+  try {
+    if (id) await apiPut('/api/agent-profiles/' + id, body);
+    else    await apiPost('/api/agent-profiles', body);
+    toast('💾 Profile saved'); resetAgentForm(); loadAgentProfiles();
+  } catch (e) { toast(e.message,'err'); }
+};
+window.editAgentProfile = async (id) => {
+  try {
+    const p = await api('/api/agent-profiles/' + id);
+    $('ap-id').value = p.id; $('ap-name').value = p.name; $('ap-voice').value = p.voice;
+    $('ap-model').value = p.model; $('ap-tools').value = p.enabled_tools || '[]';
+    $('ap-prompt').value = p.system_prompt || ''; $('ap-default').checked = !!p.is_default;
+    window.scrollTo({top:0, behavior:'smooth'});
+  } catch (e) { toast(e.message,'err'); }
+};
+window.deleteAgentProfile = async (id, name) => { if (!confirm('Delete profile "'+name+'"?')) return; try { await apiDel('/api/agent-profiles/'+id); loadAgentProfiles(); } catch (e) { toast(e.message,'err'); } };
+window.setDefaultAgentProfile = async (id) => { try { await apiPost('/api/agent-profiles/'+id+'/set-default'); loadAgentProfiles(); } catch (e) { toast(e.message,'err'); } };
+window.resetAgentForm = () => { $('ap-id').value=''; $('ap-name').value=''; $('ap-voice').value='Aoede'; $('ap-model').value='gemini-3.1-flash-live-preview'; $('ap-tools').value='[]'; $('ap-prompt').value=''; $('ap-default').checked=false; };
+
+// ============= PROMPT =============
+async function loadPrompt() { try { const r = await api('/api/prompt'); $('prompt-text').value = r.prompt || ''; $('prompt-count').textContent = (r.prompt||'').length; } catch (e) { toast(e.message,'err'); } }
+$('prompt-text').addEventListener('input', () => $('prompt-count').textContent = $('prompt-text').value.length);
+window.savePrompt = async () => { try { await apiPost('/api/prompt', {prompt: $('prompt-text').value}); toast('💾 Prompt saved'); } catch (e) { toast(e.message,'err'); } };
+window.resetPrompt = async () => { if (!confirm('Reset to default?')) return; try { const r = await apiDel('/api/prompt'); $('prompt-text').value = r.prompt; toast('↺ Reset'); } catch (e) { toast(e.message,'err'); } };
+
+// ============= APPOINTMENTS =============
+async function loadAppointments() {
+  try {
+    const date = $('apt-date').value;
+    const list = await api('/api/appointments' + (date ? '?date=' + date : ''));
+    if (!list.length) { $('apt-table').innerHTML = '<span class="muted">No appointments.</span>'; return; }
+    let h = '<table><tr><th>Date</th><th>Time</th><th>Name</th><th>Phone</th><th>Service</th><th>Status</th><th>Action</th></tr>';
+    list.forEach(a => h += `<tr>
+      <td>${escHtml(a.date)}</td><td>${escHtml(a.time)}</td><td>${escHtml(a.name)}</td>
+      <td><span class="code">${escHtml(a.phone)}</span></td><td>${escHtml(a.service)}</td>
+      <td><span class="badge ${a.status==='booked'?'b-ok':'b-mut'}">${escHtml(a.status)}</span></td>
+      <td>${a.status==='booked' ? `<button class="btn danger sm" onclick="cancelAppointment('${a.id}')">Cancel</button>` : ''}</td>
+    </tr>`);
+    $('apt-table').innerHTML = h + '</table>';
+  } catch (e) { $('apt-table').innerHTML = '<span class="muted">' + escHtml(e.message) + '</span>'; }
+}
+$('apt-date').addEventListener('change', loadAppointments);
+window.cancelAppointment = async (id) => { if (!confirm('Cancel appointment?')) return; try { await apiDel('/api/appointments/'+id); loadAppointments(); } catch (e) { toast(e.message,'err'); } };
+
+// ============= CALLS =============
+let callsPage = 1;
+async function loadCalls(page) {
+  page = Math.max(1, page || 1); callsPage = page; $('calls-page').textContent = page;
+  try {
+    const list = await api('/api/calls?page=' + page + '&limit=20');
+    if (!list.length) { $('calls-table').innerHTML = '<span class="muted">No calls on this page.</span>'; return; }
+    let h = '<table><tr><th>Time</th><th>Phone</th><th>Lead</th><th>Outcome</th><th>Reason</th><th>Dur</th><th>Recording</th><th>Notes</th></tr>';
+    list.forEach(c => {
+      const outClass = c.outcome === 'booked' ? 'b-ok' : c.outcome === 'not_interested' ? 'b-bad' : 'b-mut';
+      h += `<tr>
+        <td class="muted">${fmtTs(c.timestamp)}</td>
+        <td><span class="code">${escHtml(c.phone_number)}</span></td>
+        <td>${escHtml(c.lead_name||'')}</td>
+        <td><span class="badge ${outClass}">${escHtml(c.outcome||'')}</span></td>
+        <td class="muted">${escHtml(c.reason||'')}</td>
+        <td>${c.duration_seconds||0}s</td>
+        <td>${c.recording_url ? `<a href="${escHtml(c.recording_url)}" target="_blank">▶</a>` : '<span class="muted">—</span>'}</td>
+        <td><textarea data-id="${c.id}" class="notes-edit" style="min-height:40px;font-size:11px">${escHtml(c.notes||'')}</textarea><button class="btn sm" onclick="saveNotes('${c.id}', this)">Save</button></td>
+      </tr>`;
+    });
+    $('calls-table').innerHTML = h + '</table>';
+  } catch (e) { $('calls-table').innerHTML = '<span class="muted">' + escHtml(e.message) + '</span>'; }
+}
+window.saveNotes = async (id, btn) => {
+  const ta = btn.previousElementSibling;
+  try { await apiPatch('/api/calls/' + id + '/notes', {notes: ta.value}); toast('💾 Notes saved'); }
+  catch (e) { toast(e.message,'err'); }
+};
+
+// ============= CRM =============
+async function loadCRM() {
+  try {
+    const r = await api('/api/crm');
+    const list = r.data || [];
+    if (!list.length) { $('crm-list').innerHTML = '<span class="muted">No contacts yet.</span>'; return; }
+    let h = '<table><tr><th>Phone</th><th>Lead</th><th>Calls</th><th>Last</th></tr>';
+    list.forEach(c => h += `<tr style="cursor:pointer" onclick="loadContactDetail('${c.phone_number}')">
+      <td><span class="code">${escHtml(c.phone_number)}</span></td>
+      <td>${escHtml(c.lead_name||'')}</td>
+      <td>${c.total_calls} ${c.booked?`<span class="badge b-ok">${c.booked} booked</span>`:''}</td>
+      <td class="muted">${fmtTs(c.last_call)}</td>
+    </tr>`);
+    $('crm-list').innerHTML = h + '</table>';
+  } catch (e) { $('crm-list').innerHTML = '<span class="muted">' + escHtml(e.message) + '</span>'; }
+}
+window.loadContactDetail = async (phone) => {
+  try {
+    const r = await api('/api/crm/calls?phone=' + encodeURIComponent(phone));
+    const calls = r.data || [];
+    let h = `<h3><span class="code">${escHtml(phone)}</span> · ${calls.length} calls</h3>`;
+    if (!calls.length) { h += '<span class="muted">No history</span>'; }
+    else { calls.forEach(c => h += `<div style="padding:10px;border-bottom:1px solid var(--border)"><div><strong>${escHtml(c.outcome||'?')}</strong> · ${fmtTs(c.timestamp)} · ${c.duration_seconds||0}s</div><div class="muted">${escHtml(c.reason||'')}</div>${c.notes?`<div style="margin-top:6px">📝 ${escHtml(c.notes)}</div>`:''}</div>`); }
+    $('crm-detail').innerHTML = h;
+  } catch (e) { toast(e.message,'err'); }
+};
+
+// ============= SETTINGS =============
+const SETTING_KEYS = ['LIVEKIT_URL','LIVEKIT_API_KEY','LIVEKIT_API_SECRET','GOOGLE_API_KEY','GEMINI_MODEL','GEMINI_TTS_VOICE','USE_GEMINI_REALTIME','VOBIZ_SIP_DOMAIN','VOBIZ_USERNAME','VOBIZ_PASSWORD','VOBIZ_OUTBOUND_NUMBER','OUTBOUND_TRUNK_ID','DEFAULT_TRANSFER_NUMBER','TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_FROM_NUMBER','S3_ACCESS_KEY_ID','S3_SECRET_ACCESS_KEY','S3_ENDPOINT_URL','S3_REGION','S3_BUCKET','CALCOM_API_KEY','CALCOM_EVENT_TYPE_ID','CALCOM_TIMEZONE'];
+async function loadSettings() {
+  try {
+    const s = await api('/api/settings');
+    SETTING_KEYS.forEach(k => {
+      const el = $('s-' + k); if (!el) return;
+      const item = s[k] || {};
+      // Credentials are env-only and read-only. Sensitive fields never reveal their value.
+      const editable = !!item.editable;
+      el.disabled = !editable;
+      if (editable) {
+        el.value = item.value || '';
+      } else if (el.type === 'password') {
+        el.value = '';
+        el.placeholder = item.configured ? '✓ set in VPS env (hidden)' : '✗ not set in VPS env';
+      } else {
+        el.value = item.value || '';
+        if (!item.configured) el.placeholder = '✗ not set in VPS env';
+      }
+      el.style.opacity = editable ? '1' : '0.85';
+      el.style.cursor = editable ? '' : 'not-allowed';
+    });
+    // Tools toggles (DB-writable)
+    let enabled = [];
+    try { enabled = JSON.parse(s.ENABLED_TOOLS?.value || '[]'); } catch (e) { enabled = []; }
+    document.querySelectorAll('#tools-toggles input').forEach(cb => cb.checked = enabled.includes(cb.value));
+  } catch (e) { toast(e.message,'err'); }
+}
+window.createSIPTrunk = async () => {
+  if (!confirm('Create a new SIP outbound trunk in LiveKit using the Vobiz env vars?')) return;
+  try {
+    const r = await apiPost('/api/setup/trunk');
+    const msg = `⚡ Trunk created: ${r.trunk_id}\n\n${r.action_required||''}`;
+    alert(msg);
+    toast('Trunk created — add OUTBOUND_TRUNK_ID to env vars and redeploy');
+  } catch (e) { toast(e.message,'err'); }
+};
+window.saveToolToggles = async () => {
+  const enabled = Array.from(document.querySelectorAll('#tools-toggles input:checked')).map(cb => cb.value);
+  try {
+    const r = await apiPost('/api/settings', {settings: {ENABLED_TOOLS: JSON.stringify(enabled)}});
+    if ((r.saved||[]).includes('ENABLED_TOOLS')) toast('💾 Tools updated');
+    else toast('⚠️ Tools not saved (server policy)','err');
+  } catch (e) { toast(e.message,'err'); }
+};
+
+// ============= LOGS =============
+let _logsTimer = null, _logsPaused = false;
+$('log-pause').addEventListener('click', () => {
+  _logsPaused = !_logsPaused;
+  $('log-pause').textContent = _logsPaused ? '▶ Resume' : '⏸ Pause';
+});
+$('log-level').addEventListener('change', loadLogs);
+$('log-source').addEventListener('change', loadLogs);
+async function loadLogs() {
+  try {
+    const params = new URLSearchParams({limit: 200});
+    if ($('log-level').value) params.set('level', $('log-level').value);
+    if ($('log-source').value) params.set('source', $('log-source').value);
+    const list = await api('/api/logs?' + params.toString());
+    if (!list.length) { $('logs-table').innerHTML = '<span class="muted">No logs.</span>'; return; }
+    let h = '<table><tr><th>Time</th><th>Level</th><th>Source</th><th>Message</th></tr>';
+    list.forEach(l => {
+      const lc = l.level === 'error' ? 'b-bad' : l.level === 'warning' ? 'b-warn' : 'b-mut';
+      h += `<tr>
+        <td class="muted" style="white-space:nowrap">${fmtTs(l.timestamp)}</td>
+        <td><span class="badge ${lc}">${escHtml(l.level)}</span></td>
+        <td class="muted">${escHtml(l.source)}</td>
+        <td>${escHtml(l.message)}${l.detail?`<div class="muted" style="font-size:11px">${escHtml(l.detail)}</div>`:''}</td>
+      </tr>`;
+    });
+    $('logs-table').innerHTML = h + '</table>';
+  } catch (e) { $('logs-table').innerHTML = '<span class="muted">' + escHtml(e.message) + '</span>'; }
+}
+async function clearLogs() { if (!confirm('Clear all logs?')) return; try { await apiDel('/api/logs'); loadLogs(); } catch (e) { toast(e.message,'err'); } }
+function scheduleLogsRefresh() {
+  if (_logsTimer) clearInterval(_logsTimer);
+  _logsTimer = setInterval(() => { if (!_logsPaused && document.querySelector('#p-logs.active')) loadLogs(); }, 5000);
+}
+
+// ============= INIT =============
+async function init() {
+  await loadStats();
+  await loadLiveConfig();
+  await loadAgentProfiles();
+  setInterval(() => { if (document.querySelector('#p-stats.active')) { loadStats(); loadLiveConfig(); } }, 10000);
+  scheduleLogsRefresh();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
