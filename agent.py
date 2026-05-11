@@ -98,10 +98,16 @@ def _build_session(
             except Exception:
                 pass
             try:
+                # Latency-tuned VAD:
+                #   END_SENSITIVITY_HIGH    -> Gemini decides "user is done" aggressively.
+                #   silence_duration_ms=500 -> waits only 0.5s of silence (was 2000ms,
+                #                              which added ~2s to every single reply).
+                #   prefix_padding_ms=200   -> keeps a small lead-in so first phonemes
+                #                              aren't clipped.
                 realtime_kwargs["realtime_input_config"] = _gt.RealtimeInputConfig(
                     automatic_activity_detection=_gt.AutomaticActivityDetection(
-                        end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_LOW,
-                        silence_duration_ms=2000,
+                        end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_HIGH,
+                        silence_duration_ms=500,
                         prefix_padding_ms=200,
                     ),
                 )
@@ -292,20 +298,41 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await _safe_log("info", "Agent session started — generating greeting")
 
     # ── Greeting FIRST (zero dead air) ───────────────────────────────────────
-    # Trigger the greeting immediately, before recording or anything blocking.
-    # generate_reply is async and the audio starts streaming as soon as the
-    # first chunk is ready, so the lead hears Priya within ~300-600ms.
+    # On Gemini Live realtime, the WebSocket to Google needs ~200-400ms to be
+    # fully ready after session.start(). Calling generate_reply immediately
+    # often gets dropped and the model sits silent until the user speaks.
+    # 1. Small delay so the realtime channel is live.
+    # 2. Try session.say() first — it directly emits audio and is the most
+    #    reliable way to get a fixed first line out on every model type.
+    # 3. Fall back to generate_reply with an explicit user_input that forces
+    #    Gemini to treat the call connection as a turn it must answer.
+    await asyncio.sleep(0.3)
     if phone_number:
-        greeting_instr = (
-            f"The call just connected. Immediately greet warmly and ask: "
-            f"\"Hi, am I speaking with {lead_name}?\" Do not wait."
-        )
+        greeting_text = f"Hi, am I speaking with {lead_name}?"
     else:
-        greeting_instr = "Greet the caller warmly and ask how you can help."
+        greeting_text = "Hi, this is Priya from TBD Campus. How can I help?"
+
+    greeting_fired = False
     try:
-        await session.generate_reply(instructions=greeting_instr)
+        await session.say(greeting_text, allow_interruptions=True)
+        greeting_fired = True
+        await _safe_log("info", f"Greeting via session.say(): {greeting_text}")
     except Exception as exc:
-        await _safe_log("warning", f"generate_reply failed: {exc}")
+        await _safe_log("warning", f"session.say() unavailable, falling back: {exc}")
+
+    if not greeting_fired:
+        try:
+            await session.generate_reply(
+                user_input=(
+                    "[SYSTEM: outbound call just connected and the lead has picked up]"
+                ),
+                instructions=(
+                    f"You must speak FIRST. Say exactly: \"{greeting_text}\""
+                ),
+            )
+            await _safe_log("info", "Greeting via generate_reply()")
+        except Exception as exc:
+            await _safe_log("warning", f"generate_reply failed: {exc}")
 
     # ── Optional S3 recording (fire-and-forget so it never blocks greeting) ──
     if phone_number:
