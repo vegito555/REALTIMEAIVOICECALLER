@@ -291,7 +291,23 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await session.start(**session_kwargs)
     await _safe_log("info", "Agent session started — generating greeting")
 
-    # ── Optional S3 recording ────────────────────────────────────────────────
+    # ── Greeting FIRST (zero dead air) ───────────────────────────────────────
+    # Trigger the greeting immediately, before recording or anything blocking.
+    # generate_reply is async and the audio starts streaming as soon as the
+    # first chunk is ready, so the lead hears Priya within ~300-600ms.
+    if phone_number:
+        greeting_instr = (
+            f"The call just connected. Immediately greet warmly and ask: "
+            f"\"Hi, am I speaking with {lead_name}?\" Do not wait."
+        )
+    else:
+        greeting_instr = "Greet the caller warmly and ask how you can help."
+    try:
+        await session.generate_reply(instructions=greeting_instr)
+    except Exception as exc:
+        await _safe_log("warning", f"generate_reply failed: {exc}")
+
+    # ── Optional S3 recording (fire-and-forget so it never blocks greeting) ──
     if phone_number:
         _aws_key = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
         _aws_secret = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
@@ -325,19 +341,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 await _safe_log("info", f"Recording started: egress={_egress.egress_id}")
             except Exception as exc:
                 await _safe_log("warning", f"Recording start failed (non-fatal): {exc}")
-
-    # ── Greeting (Rule 4) ────────────────────────────────────────────────────
-    if "3.1" in gemini_model or "2.5" in gemini_model:
-        await _safe_log("info", "Gemini native-audio: greets autonomously from system prompt")
-    else:
-        greeting = (
-            f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
-            if phone_number else "Greet the caller warmly."
-        )
-        try:
-            await session.generate_reply(instructions=greeting)
-        except Exception as exc:
-            await _safe_log("warning", f"generate_reply failed: {exc}")
 
     # ── Keep alive until SIP participant disconnects ─────────────────────────
     if phone_number:
