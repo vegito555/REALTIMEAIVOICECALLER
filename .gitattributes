@@ -1,0 +1,28 @@
+# Force LF line endings for files that run inside the Linux Docker container.
+# Without this, `start.sh` committed from Windows would contain CRLF and fail
+# with: /usr/bin/env: 'bash\r': No such file or directory
+* text=auto eol=lf
+
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.py        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.html      text eol=lf
+*.sql       text eol=lf
+*.md        text eol=lf
+.env.example text eol=lf
+.dockerignore text eol=lf
+.gitignore  text eol=lf
+
+# Never munge binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ogg binary
+*.mp3 binary
+*.wav binary
+*.pdf binary
