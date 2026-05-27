@@ -216,13 +216,24 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except Exception as exc:
             logger.warning("Could not load default agent profile: %s", exc)
 
-    system_prompt = build_prompt(
-        lead_name=lead_name,
-        business_name=business_name,
-        service_type=service_type,
-        custom_prompt=custom_prompt,
-        phone=phone_number or "",
-    )
+    # If a custom prompt was supplied (per-call override or default profile),
+    # use it directly with best-effort {placeholder} substitution. Otherwise
+    # fall back to the default prompt template defined in prompts.py.
+    if custom_prompt:
+        try:
+            system_prompt = custom_prompt.format(
+                lead_name=lead_name,
+                phone=phone_number or "",
+                business_name=business_name,
+                service_type=service_type,
+            )
+        except (KeyError, IndexError):
+            system_prompt = custom_prompt
+    else:
+        system_prompt = build_prompt(
+            lead_name=lead_name,
+            phone=phone_number or "",
+        )
 
     tool_ctx = AppointmentTools(ctx, phone_number=phone_number, lead_name=lead_name)
 
