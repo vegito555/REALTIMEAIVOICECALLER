@@ -98,27 +98,38 @@ def _build_session(
             except Exception:
                 pass
             try:
-                # Latency-tuned VAD:
+                # Latency-tuned VAD (Gemini Live's own — Silero is NOT used here):
+                #   START_SENSITIVITY_HIGH  -> faster interruption detection.
                 #   END_SENSITIVITY_HIGH    -> Gemini decides "user is done" aggressively.
-                #   silence_duration_ms=500 -> waits only 0.5s of silence (was 2000ms,
-                #                              which added ~2s to every single reply).
-                #   prefix_padding_ms=200   -> keeps a small lead-in so first phonemes
-                #                              aren't clipped.
+                #   silence_duration_ms=300 -> waits only 0.3s of silence before replying.
+                #   prefix_padding_ms=100   -> small lead-in so first phonemes aren't
+                #                              clipped without adding noticeable lag.
                 realtime_kwargs["realtime_input_config"] = _gt.RealtimeInputConfig(
                     automatic_activity_detection=_gt.AutomaticActivityDetection(
+                        start_of_speech_sensitivity=_gt.StartSensitivity.START_SENSITIVITY_HIGH,
                         end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_HIGH,
-                        silence_duration_ms=500,
-                        prefix_padding_ms=200,
+                        silence_duration_ms=300,
+                        prefix_padding_ms=100,
                     ),
                 )
             except Exception:
                 pass
 
+            # Disable thinking traces in the transcript stream — they delay the
+            # first audio frame on native-audio models without adding user value.
+            try:
+                realtime_kwargs["thinking_config"] = _gt.ThinkingConfig(
+                    include_thoughts=False,
+                )
+            except Exception:
+                pass
+
             llm_realtime = lk_google.beta.realtime.RealtimeModel(**realtime_kwargs)
+            # NOTE: do NOT pass vad= here. Gemini Live has built-in turn
+            # detection; adding Silero on top adds buffering and slows replies.
             return AgentSession(
                 llm=llm_realtime,
                 tools=tools,
-                vad=silero.VAD.load(),
             )
         except Exception as exc:
             logger.exception("Failed to build Gemini realtime session, falling back: %s", exc)
