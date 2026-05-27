@@ -161,9 +161,21 @@ class OutboundAssistant(Agent):
 
 
 async def _safe_log(level: str, msg: str, detail: str = "") -> None:
+    """Fire-and-forget log to Supabase.
+
+    Awaited callers return immediately because the actual HTTP write happens
+    in a background task. This keeps the greeting path off the critical path
+    of Supabase round-trips (~50ms each, several per call) so audio starts
+    sooner after the lead picks up.
+    """
+    async def _do() -> None:
+        try:
+            from db import log_error
+            await log_error("agent", msg, detail, level)
+        except Exception:
+            pass
     try:
-        from db import log_error
-        await log_error("agent", msg, detail, level)
+        asyncio.create_task(_do())
     except Exception:
         pass
 
@@ -328,7 +340,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     #    reliable way to get a fixed first line out on every model type.
     # 3. Fall back to generate_reply with an explicit user_input that forces
     #    Gemini to treat the call connection as a turn it must answer.
-    await asyncio.sleep(0.3)
+    # 150ms is enough for the WebSocket to be live in practice while shaving
+    # half the original 300ms off the lead-pickup-to-greeting latency.
+    await asyncio.sleep(0.15)
     if phone_number:
         greeting_text = f"Hi, am I speaking with {lead_name}?"
     else:
