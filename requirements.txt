@@ -1,9 +1,9 @@
-livekit-agents>=1.0.0
-livekit-api>=0.8.0
-livekit-plugins-google>=1.0.0
-livekit-plugins-deepgram>=0.8.0
-livekit-plugins-silero>=0.8.0
-livekit-plugins-noise-cancellation
+livekit-agents~=1.5
+livekit-api>=1.0,<2.0
+livekit-plugins-google~=1.5
+livekit-plugins-deepgram~=1.5
+livekit-plugins-silero~=1.5
+livekit-plugins-noise-cancellation~=1.5
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
