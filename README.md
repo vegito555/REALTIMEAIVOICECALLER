@@ -62,7 +62,7 @@ LIVEKIT_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Google Gemini (aistudio.google.com/app/apikey)
 GOOGLE_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GEMINI_MODEL=gemini-3.1-flash-live-preview
+GEMINI_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
 GEMINI_TTS_VOICE=Aoede
 USE_GEMINI_REALTIME=true
 

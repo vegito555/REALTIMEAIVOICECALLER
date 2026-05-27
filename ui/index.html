@@ -243,8 +243,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="row">
       <div class="field"><label>Model</label>
         <select id="ap-model">
-          <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview ⭐</option>
-          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025 ⭐</option>
         </select>
       </div>
       <div class="field"><label>Enabled Tools (JSON array, [] = all)</label><input type="text" id="ap-tools" value="[]" placeholder='["lookup_contact","end_call"]' /></div>
@@ -339,8 +338,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
       <div class="field eye"><label>GOOGLE_API_KEY</label><input type="password" id="s-GOOGLE_API_KEY" /><button type="button" class="toggle-eye" onclick="togglePw('s-GOOGLE_API_KEY')">👁</button></div>
       <div class="field"><label>GEMINI_MODEL</label>
         <select id="s-GEMINI_MODEL">
-          <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview ⭐</option>
-          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025 ⭐</option>
         </select>
       </div>
     </div>
@@ -731,7 +729,7 @@ window.editAgentProfile = async (id) => {
 };
 window.deleteAgentProfile = async (id, name) => { if (!confirm('Delete profile "'+name+'"?')) return; try { await apiDel('/api/agent-profiles/'+id); loadAgentProfiles(); } catch (e) { toast(e.message,'err'); } };
 window.setDefaultAgentProfile = async (id) => { try { await apiPost('/api/agent-profiles/'+id+'/set-default'); loadAgentProfiles(); } catch (e) { toast(e.message,'err'); } };
-window.resetAgentForm = () => { $('ap-id').value=''; $('ap-name').value=''; $('ap-voice').value='Aoede'; $('ap-model').value='gemini-3.1-flash-live-preview'; $('ap-tools').value='[]'; $('ap-prompt').value=''; $('ap-default').checked=false; };
+window.resetAgentForm = () => { $('ap-id').value=''; $('ap-name').value=''; $('ap-voice').value='Aoede'; $('ap-model').value='gemini-2.5-flash-native-audio-preview-12-2025'; $('ap-tools').value='[]'; $('ap-prompt').value=''; $('ap-default').checked=false; };
 
 // ============= PROMPT =============
 async function loadPrompt() { try { const r = await api('/api/prompt'); $('prompt-text').value = r.prompt || ''; $('prompt-count').textContent = (r.prompt||'').length; } catch (e) { toast(e.message,'err'); } }

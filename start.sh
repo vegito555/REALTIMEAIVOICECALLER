@@ -16,7 +16,7 @@ cd "$(dirname "$0")"
 
 echo "🚀 Starting OutboundAI (single source of truth: VPS env vars)"
 echo "   LIVEKIT_URL      = ${LIVEKIT_URL:-<missing>}"
-echo "   GEMINI_MODEL     = ${GEMINI_MODEL:-gemini-3.1-flash-live-preview}"
+echo "   GEMINI_MODEL     = ${GEMINI_MODEL:-gemini-2.5-flash-native-audio-preview-12-2025}"
 echo "   GEMINI_TTS_VOICE = ${GEMINI_TTS_VOICE:-Aoede}"
 echo "   SUPABASE_URL     = ${SUPABASE_URL:-<missing>}"
 echo "   OUTBOUND_TRUNK_ID= ${OUTBOUND_TRUNK_ID:-<missing>}"

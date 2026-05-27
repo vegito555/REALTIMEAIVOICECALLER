@@ -67,7 +67,7 @@ def _build_session(
     the same worker process never share state via os.environ.
     """
     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() == "true"
-    model_name = model_override or os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
+    model_name = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
     voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     api_key = os.getenv("GOOGLE_API_KEY", "")
 
@@ -257,7 +257,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             await _safe_log("info", f"Call ANSWERED — {phone_number}, starting AI session")
 
     # ── Build & start session AFTER answer ───────────────────────────────────
-    gemini_model = model_override or os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
+    gemini_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     await _safe_log(
         "info",
