@@ -115,12 +115,23 @@ def _build_session(
             except Exception:
                 pass
 
-            # Disable thinking traces in the transcript stream — they delay the
-            # first audio frame on native-audio models without adding user value.
+            # Disable internal thinking on the 2.5 native-audio model.
+            #   thinking_budget=0  -> stops the model from spending tokens on
+            #                        chain-of-thought before producing audio.
+            #                        Saves ~200-500ms per mid-turn reply.
+            #   include_thoughts=False -> also hides any thinking traces
+            #                        from the transcript stream.
+            # `thinking_budget` is a relatively new field on ThinkingConfig.
+            # We probe for it first and fall back to include_thoughts only if
+            # the installed google-genai version doesn't accept it.
             try:
-                realtime_kwargs["thinking_config"] = _gt.ThinkingConfig(
-                    include_thoughts=False,
-                )
+                _think_kwargs: dict = {"include_thoughts": False}
+                try:
+                    _gt.ThinkingConfig(thinking_budget=0)  # probe field existence
+                    _think_kwargs["thinking_budget"] = 0
+                except Exception:
+                    pass
+                realtime_kwargs["thinking_config"] = _gt.ThinkingConfig(**_think_kwargs)
             except Exception:
                 pass
 
