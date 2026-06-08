@@ -61,97 +61,21 @@ def _build_session(
     model_override: Optional[str] = None,
     voice_override: Optional[str] = None,
 ) -> AgentSession:
-    """Build an AgentSession backed by Gemini Live realtime audio.
+    """Build an AgentSession backed by Deepgram, Groq, and xAI.
 
     Per-call overrides are passed as locals so that concurrent calls running in
     the same worker process never share state via os.environ.
     """
-    use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() == "true"
-    model_name = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
-    voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
-    api_key = os.getenv("GOOGLE_API_KEY", "")
+    from livekit.plugins import deepgram, groq, xai
 
-    if use_realtime:
-        try:
-            from livekit.plugins import google as lk_google
-            from google.genai import types as _gt
+    model_name = model_override or os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    voice = voice_override or os.getenv("XAI_VOICE", "ara")
 
-            realtime_kwargs = dict(
-                model=model_name,
-                voice=voice,
-                api_key=api_key,
-                instructions=system_prompt,
-            )
-
-            # Rule 6 — silence-prevention configs (all 3 mandatory)
-            try:
-                realtime_kwargs["session_resumption"] = _gt.SessionResumptionConfig(
-                    transparent=True
-                )
-            except Exception:
-                pass
-            try:
-                realtime_kwargs["context_window_compression"] = _gt.ContextWindowCompressionConfig(
-                    trigger_tokens=25600,
-                    sliding_window=_gt.SlidingWindow(target_tokens=12800),
-                )
-            except Exception:
-                pass
-            try:
-                # Latency-tuned VAD (Gemini Live's own — Silero is NOT used here):
-                #   START_SENSITIVITY_HIGH  -> faster interruption detection.
-                #   END_SENSITIVITY_HIGH    -> Gemini decides "user is done" aggressively.
-                #   silence_duration_ms=300 -> waits only 0.3s of silence before replying.
-                #   prefix_padding_ms=100   -> small lead-in so first phonemes aren't
-                #                              clipped without adding noticeable lag.
-                realtime_kwargs["realtime_input_config"] = _gt.RealtimeInputConfig(
-                    automatic_activity_detection=_gt.AutomaticActivityDetection(
-                        start_of_speech_sensitivity=_gt.StartSensitivity.START_SENSITIVITY_HIGH,
-                        end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_HIGH,
-                        silence_duration_ms=300,
-                        prefix_padding_ms=100,
-                    ),
-                )
-            except Exception:
-                pass
-
-            # Disable internal thinking on the 2.5 native-audio model.
-            #   thinking_budget=0  -> stops the model from spending tokens on
-            #                        chain-of-thought before producing audio.
-            #                        Saves ~200-500ms per mid-turn reply.
-            #   include_thoughts=False -> also hides any thinking traces
-            #                        from the transcript stream.
-            # `thinking_budget` is a relatively new field on ThinkingConfig.
-            # We probe for it first and fall back to include_thoughts only if
-            # the installed google-genai version doesn't accept it.
-            try:
-                _think_kwargs: dict = {"include_thoughts": False}
-                try:
-                    _gt.ThinkingConfig(thinking_budget=0)  # probe field existence
-                    _think_kwargs["thinking_budget"] = 0
-                except Exception:
-                    pass
-                realtime_kwargs["thinking_config"] = _gt.ThinkingConfig(**_think_kwargs)
-            except Exception:
-                pass
-
-            llm_realtime = lk_google.beta.realtime.RealtimeModel(**realtime_kwargs)
-            # NOTE: do NOT pass vad= here. Gemini Live has built-in turn
-            # detection; adding Silero on top adds buffering and slows replies.
-            return AgentSession(
-                llm=llm_realtime,
-                tools=tools,
-            )
-        except Exception as exc:
-            logger.exception("Failed to build Gemini realtime session, falling back: %s", exc)
-
-    # Fallback pipeline (Deepgram STT + Gemini text LLM + Google TTS)
-    from livekit.plugins import deepgram, google as lk_google
     return AgentSession(
         vad=silero.VAD.load(),
-        stt=deepgram.STT(model="nova-2", language="multi"),
-        llm=lk_google.LLM(model="gemini-2.0-flash", api_key=api_key),
-        tts=lk_google.TTS(voice_name=voice),
+        stt=deepgram.STT(model="nova-3", language="multi"),
+        llm=groq.LLM(model=model_name, api_key=os.getenv("GROQ_API_KEY", "")),
+        tts=xai.TTS(voice=voice, language="hi", api_key=os.getenv("XAI_API_KEY", "")),
         tools=tools,
     )
 
@@ -302,11 +226,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             await _safe_log("info", f"Call ANSWERED — {phone_number}, starting AI session")
 
     # ── Build & start session AFTER answer ───────────────────────────────────
-    gemini_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
-    gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+    active_model = model_override or os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    active_voice = voice_override or os.getenv("XAI_VOICE", "ara")
     await _safe_log(
         "info",
-        f"Building AI session — model={gemini_model} voice={gemini_voice}",
+        f"Building AI session — model={active_model} voice={active_voice}",
     )
     active_tools = tool_ctx.build_tool_list(enabled_tools)
     await _safe_log("info", f"Tools loaded: {[t.__name__ for t in active_tools]}")
@@ -343,17 +267,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await _safe_log("info", "Agent session started — generating greeting")
 
     # ── Greeting FIRST (zero dead air) ───────────────────────────────────────
-    # On Gemini Live realtime, the WebSocket to Google needs ~200-400ms to be
-    # fully ready after session.start(). Calling generate_reply immediately
-    # often gets dropped and the model sits silent until the user speaks.
-    # 1. Small delay so the realtime channel is live.
-    # 2. Try session.say() first — it directly emits audio and is the most
-    #    reliable way to get a fixed first line out on every model type.
-    # 3. Fall back to generate_reply with an explicit user_input that forces
-    #    Gemini to treat the call connection as a turn it must answer.
-    # 150ms is enough for the WebSocket to be live in practice while shaving
-    # half the original 300ms off the lead-pickup-to-greeting latency.
-    await asyncio.sleep(0.15)
+    # We try session.say() first — it directly emits audio and is the most
+    # reliable way to get a fixed first line out on every model type.
+    # If that fails, we fall back to generate_reply with an explicit user_input.
+    await asyncio.sleep(0.1)
     if phone_number:
         greeting_text = f"Hi, am I speaking with {lead_name}?"
     else:

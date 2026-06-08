@@ -80,8 +80,8 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS agent_profile_id TEXT;
 CREATE TABLE IF NOT EXISTS agent_profiles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    voice TEXT NOT NULL DEFAULT 'Aoede',
-    model TEXT NOT NULL DEFAULT 'gemini-2.5-flash-native-audio-preview-12-2025',
+    voice TEXT NOT NULL DEFAULT 'ara',
+    model TEXT NOT NULL DEFAULT 'llama-3.1-8b-instant',
     system_prompt TEXT,
     enabled_tools TEXT DEFAULT '[]',
     is_default INTEGER DEFAULT 0,
