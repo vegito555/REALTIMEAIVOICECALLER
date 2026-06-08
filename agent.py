@@ -66,16 +66,16 @@ def _build_session(
     Per-call overrides are passed as locals so that concurrent calls running in
     the same worker process never share state via os.environ.
     """
-    from livekit.plugins import deepgram, groq, xai
+    from livekit.plugins import deepgram, groq
 
     model_name = model_override or os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-    voice = voice_override or os.getenv("XAI_VOICE", "ara")
+    voice = voice_override or os.getenv("DEEPGRAM_TTS_VOICE", "aura-asteria-en")
 
     return AgentSession(
         vad=silero.VAD.load(),
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=groq.LLM(model=model_name, api_key=os.getenv("GROQ_API_KEY", "")),
-        tts=xai.TTS(voice=voice, language="hi", api_key=os.getenv("XAI_API_KEY", "")),
+        tts=deepgram.TTS(model=voice),
         tools=tools,
     )
 
