@@ -16,14 +16,15 @@ cd "$(dirname "$0")"
 
 echo "🚀 Starting OutboundAI (single source of truth: VPS env vars)"
 echo "   LIVEKIT_URL      = ${LIVEKIT_URL:-<missing>}"
-echo "   GEMINI_MODEL     = ${GEMINI_MODEL:-gemini-2.5-flash-native-audio-preview-12-2025}"
-echo "   GEMINI_TTS_VOICE = ${GEMINI_TTS_VOICE:-Aoede}"
+echo "   GROQ_MODEL       = ${GROQ_MODEL:-llama-3.1-8b-instant}"
+echo "   XAI_VOICE        = ${XAI_VOICE:-ara}"
 echo "   SUPABASE_URL     = ${SUPABASE_URL:-<missing>}"
 echo "   OUTBOUND_TRUNK_ID= ${OUTBOUND_TRUNK_ID:-<missing>}"
 
 # Fail fast if the bare-minimum credentials are not present.
-require=( LIVEKIT_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET GOOGLE_API_KEY \
-          SUPABASE_URL SUPABASE_SERVICE_KEY OUTBOUND_TRUNK_ID )
+require=( LIVEKIT_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET GROQ_API_KEY \
+          XAI_API_KEY DEEPGRAM_API_KEY SUPABASE_URL SUPABASE_SERVICE_KEY \
+          OUTBOUND_TRUNK_ID )
 missing=()
 for v in "${require[@]}"; do
     if [ -z "${!v:-}" ]; then
