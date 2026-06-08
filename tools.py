@@ -151,25 +151,38 @@ class AppointmentTools(llm.ToolContext):
     @llm.function_tool
     async def send_sms_confirmation(self, phone: str, message: str) -> str:
         """
-        Send an SMS confirmation. Skips silently if Twilio not configured.
+        Send an SMS confirmation using Vobiz Messaging.
         phone: recipient phone in E.164 | message: text body.
         """
-        sid = os.getenv("TWILIO_ACCOUNT_SID", "")
-        token = os.getenv("TWILIO_AUTH_TOKEN", "")
-        from_num = os.getenv("TWILIO_FROM_NUMBER", "")
-        if not (sid and token and from_num):
-            return "SMS skipped: Twilio not configured."
+        auth_id = os.getenv("VOBIZ_AUTH_ID") or os.getenv("VOBIZ_USERNAME", "")
+        auth_token = os.getenv("VOBIZ_AUTH_TOKEN") or os.getenv("VOBIZ_PASSWORD", "")
+        channel_id = os.getenv("VOBIZ_CHANNEL_ID", "")
+        
+        if not (auth_id and auth_token):
+            return "SMS skipped: Vobiz auth not configured."
+            
         try:
-            from twilio.rest import Client
-            loop = asyncio.get_event_loop()
-            client = Client(sid, token)
-            await loop.run_in_executor(
-                None,
-                lambda: client.messages.create(body=message, from_=from_num, to=phone),
-            )
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    "https://api.vobiz.ai/v1/messaging/messages",
+                    headers={
+                        "X-Auth-ID": auth_id,
+                        "X-Auth-Token": auth_token,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "channel_id": channel_id,
+                        "to": phone,
+                        "type": "text",
+                        "text": {"body": message}
+                    }
+                )
+                if resp.status_code >= 400:
+                    logger.error("Vobiz SMS send failed: %s", resp.text)
+                    return "SMS delivery failed, but the next step is confirmed."
             return f"SMS sent to {phone}."
         except Exception as exc:
-            logger.error("SMS send failed: %s", exc)
+            logger.error("Vobiz SMS send error: %s", exc)
             return "SMS delivery failed, but the next step is confirmed."
 
     @llm.function_tool
@@ -229,24 +242,30 @@ class AppointmentTools(llm.ToolContext):
             memories = await get_contact_memory(self.phone_number)
             if len(memories) < 5:
                 return
-            import google.generativeai as genai
-            api_key = os.getenv("GOOGLE_API_KEY", "")
+            api_key = os.getenv("GROQ_API_KEY", "")
             if not api_key:
                 return
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            
             bullets = "\n".join(f"- {m['insight']}" for m in memories)
             prompt = (
                 "Compress these notes about a sales contact into 3-5 concise "
                 f"bullets. Keep all key facts.\n\n{bullets}"
             )
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None, lambda: model.generate_content(prompt)
-            )
-            text = (getattr(response, "text", "") or "").strip()
-            if text:
-                await compress_contact_memory(self.phone_number, text)
+            
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "model": os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+                        "messages": [{"role": "user", "content": prompt}]
+                    }
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data["choices"][0]["message"]["content"].strip()
+                    if text:
+                        await compress_contact_memory(self.phone_number, text)
         except Exception as exc:
             logger.warning("Memory compression failed (non-fatal): %s", exc)
 

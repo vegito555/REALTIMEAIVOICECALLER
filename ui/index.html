@@ -368,12 +368,12 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   </div>
 
   <div class="card">
-    <h2>📲 Twilio SMS (optional)</h2>
-    <div class="row">
-      <div class="field"><label>TWILIO_ACCOUNT_SID</label><input type="text" id="s-TWILIO_ACCOUNT_SID" /></div>
-      <div class="field eye"><label>TWILIO_AUTH_TOKEN</label><input type="password" id="s-TWILIO_AUTH_TOKEN" /><button type="button" class="toggle-eye" onclick="togglePw('s-TWILIO_AUTH_TOKEN')">👁</button></div>
+    <h2>📲 Vobiz Messaging (SMS)</h2>
+    <div class="field-group">
+      <div class="field"><label>VOBIZ_AUTH_ID</label><input type="text" id="s-VOBIZ_AUTH_ID" /></div>
+      <div class="field eye"><label>VOBIZ_AUTH_TOKEN</label><input type="password" id="s-VOBIZ_AUTH_TOKEN" /><button type="button" class="toggle-eye" onclick="togglePw('s-VOBIZ_AUTH_TOKEN')">👁</button></div>
     </div>
-    <div class="field"><label>TWILIO_FROM_NUMBER</label><input type="text" id="s-TWILIO_FROM_NUMBER" /></div>
+    <div class="field"><label>VOBIZ_CHANNEL_ID</label><input type="text" id="s-VOBIZ_CHANNEL_ID" /></div>
   </div>
 
   <div class="card">
@@ -814,7 +814,7 @@ window.loadContactDetail = async (phone) => {
 };
 
 // ============= SETTINGS =============
-const SETTING_KEYS = ['LIVEKIT_URL','LIVEKIT_API_KEY','LIVEKIT_API_SECRET','GOOGLE_API_KEY','GEMINI_MODEL','GEMINI_TTS_VOICE','USE_GEMINI_REALTIME','VOBIZ_SIP_DOMAIN','VOBIZ_USERNAME','VOBIZ_PASSWORD','VOBIZ_OUTBOUND_NUMBER','OUTBOUND_TRUNK_ID','DEFAULT_TRANSFER_NUMBER','TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_FROM_NUMBER','S3_ACCESS_KEY_ID','S3_SECRET_ACCESS_KEY','S3_ENDPOINT_URL','S3_REGION','S3_BUCKET','CALCOM_API_KEY','CALCOM_EVENT_TYPE_ID','CALCOM_TIMEZONE'];
+const SETTING_KEYS = ['LIVEKIT_URL','LIVEKIT_API_KEY','LIVEKIT_API_SECRET','GOOGLE_API_KEY','GEMINI_MODEL','GEMINI_TTS_VOICE','USE_GEMINI_REALTIME','VOBIZ_SIP_DOMAIN','VOBIZ_USERNAME','VOBIZ_PASSWORD','VOBIZ_OUTBOUND_NUMBER','OUTBOUND_TRUNK_ID','DEFAULT_TRANSFER_NUMBER','VOBIZ_AUTH_ID','VOBIZ_AUTH_TOKEN','VOBIZ_CHANNEL_ID','S3_ACCESS_KEY_ID','S3_SECRET_ACCESS_KEY','S3_ENDPOINT_URL','S3_REGION','S3_BUCKET','CALCOM_API_KEY','CALCOM_EVENT_TYPE_ID','CALCOM_TIMEZONE'];
 async function loadSettings() {
   try {
     const s = await api('/api/settings');
